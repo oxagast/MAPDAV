@@ -1,0 +1,7 @@
+BUGS:
+  - Windows binary doesn't always act right with the auto combos function.
+  - Sometimes if you put random arguments in, or in the wrong places,
+    it doesn't know how to handle it yet.
+  - If you have a VERY large file (a gig or two) mapdav wants, to 
+    out-of-memory or swap the hell out of your drive.  Havn't gotten the code
+    memory optimized in the count + unique yet on VERY large files.

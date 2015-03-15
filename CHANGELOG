@@ -1,0 +1,61 @@
+01/07/2014
+Tweaked some code for speed and accuracy.
+Got my datatypes correct.
+Unique + threading + count now works.
+
+01/05/2014
+Single full names are now supported.
+Can now count between groups.
+Threading.
+
+01/02/2014
+Added wordlist into main.  More error checking.
+Fixed some minor bugs.  Rotational cropping works.
+Verbose output changed some.
+
+12/31/2013
+Edited/optimized/sliced'n'diced a ton of code.
+Subbed it all out.  CSV and Directory support
+were dropped in favor of THCHydra compatable
+support native.  Cropping feature was added.
+
+1/1/2011
+Added a Windows installer and binary.
+Made the readme files etc easier to read.
+
+6/22/10
+Added auto combos.
+
+12/23/09
+Added a Makefile so you can do make install. 
+Installs in /usr/bin by default.
+
+12/21/09
+Added single user support.
+
+12/20/09
+Added a wordlist plugin support.
+
+8/12/09
+Added the THC-Hydra colon separated file support.
+
+7/20/09
+Now defaults to the file passwd in whatever directory
+you are in, instead of /etc/passwd because that causes
+problems on windows systems that don't have a passwd
+file.  Fixed regex so shutdown won't show up.  Added
+support for any directory name you want so it won't
+clobber other runs.  Fixed the user- bug.
+
+6/3/09
+Windows compatability fixed (tested on strawberry perl).
+Efficiency code cleanup, runs about 3x faster now.
+
+5/29/09
+Put in the "[rev]" modifier.
+
+Lots of changes since I started the project, but 
+the real changelog begins here because I didn't really 
+keep track of what exactly all I changed as I went.
+
+				-- oxagast

@@ -1,0 +1,89 @@
+MAPDAV v2.3
+
+ Installation:
+ # make install
+ installs in /usr/bin
+
+ Using mapdav:
+
+MAPDAV v2.4.3
+Useage: ./mapdav [options] {combinations}
+  OPTIONS:
+   --passwdfile <file>: Password file you want to use
+   --hydra <file>: Output to THCHydra file format
+   --wordlist <file>: Output to wordlist file format
+   --singleuser <username>: Only process a single user
+   --append-post xyz: Append string to the end of each combination
+   --append-mid xyz: Append string inbetween names of each combination
+   --append-pre xyz: Append string to the beginning of each combination
+   --crop x: Crop the passwords to this many characters
+   --crop-rotate x: Rotate around cropping from 2 through x characters
+   --count x: Count through numbers 0 through x and put in places
+                (this takes awhile, DO NOT SET THIS TOO HIGH! >9)
+   --overwrite: MAPDAV will overwrite the destined output file
+   --unique: Only output unique values
+   --threads x: How many processing threads to use, this applies to counts
+   --username <username>: A username for singular input
+   --full-name <"Their Full Name">: Their full name for singular input
+   --verbose: Make output verbose
+   --version: Print the version
+  COMBINATIONS:
+   fn Fn FN fi Fi mn Mn MN mi Mi ln Ln LN li Li un Un UN
+  MODIFIERS:
+   [rev]
+
+       ex:
+           ./mapdav --passwdfile passwd --hydra names.hydra --overwrite --unique FN:LN [rev]fn:
+           ./mapdav --passwdfile passwd --wordlist names.wl
+           ./mapdav --passwdfile passwd --hydra names.hydra --crop 8
+           ./mapdav --full-name "John Unknown Doe" --username djohn --count 9 --overwrite --wordlist jud.out --threads 8 --verbose
+
+  COMBINATIONS:
+   fn: First name, all lowercase.
+   Fn: First name, first initial uppercase, rest lowercase.
+   FN: First name, all uppercase.
+   fi: First initial, lowercase.
+   FI: First initial, uppercase.
+   mn: Middle name, all lowercase.
+   Mn: Middle name, first initial uppercase, rest lowercase.
+   MN: Middle name, all uppercase.
+   mi: Middle initial, lowercase.
+   MI: Middle initial, uppercase.
+   ln: Last name, all lowercase.
+   Ln: Last name, first initial uppercase, rest lowercase.
+   LN: Last name, all uppercase.
+   li: Last initial, lowercase.
+   LI: Last initial, uppercase.
+   un: Username, all lowercase.
+   Un: Username, first initial uppercase, rest lowercase.
+   UN: Username, all uppercase.
+
+   All combination denotions must be followed by a colon, even if only one word.
+
+  OUTPUT:
+   Legacy support for csv as well as directories has been removed, more or
+   less out of uselessness, in favor of hydra style user:pass combinations
+   on each line, as well as wordlists.
+
+  USERS:
+   Valid users are picked on the basis of having anything within their "name" 
+   field, and having a valid shell.  Valid shells are bash, sh, ksh, csh, and 
+   tcsh.
+
+  PLUGINS:
+   To use plugins, copy a mapdav generated csv file into the plugins directory
+   then type you're infile followed by the outfile.  If you write any more 
+   plugins for mapdav, try to make them in this format, and you can email the 
+   code to me to be included.
+
+  EXAMPLES:
+   ./mapdav --passwdfile passwd --hydra names.hydra FN:LN fn: LN:mi
+     This takes the file passwd in the current directory and outputs in hydra 
+     file format the username in the first field, then uppercase first name 
+     followed by uppercase last name, then lowercase first name only, then 
+     uppercase lastname followed by their lowercase middle initial.
+
+    ./mapdav --passwdfile passwd --hydra names.hydra
+      This causes mapdav to use it's default combo function.  For a list of the
+      combos, it uses read the source code for now.
+
