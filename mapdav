@@ -1,10 +1,11 @@
 #!/usr/bin/perl
 # MAPDAV More Accurate Password Dictionary Attack Vector
-# by oxagast, last modified 01,07,2014
+# by oxagast, last modified 08,22,2015
 use warnings;
 use File::Copy qw(move);
-my $version = "v2.4.3";
+my $version = "v2.4.4";
 $semcol = 0;
+$crop = 0;
 if ( scalar(@ARGV) <= 1 )
 {
    versionStuff();
@@ -30,20 +31,19 @@ $cropRot         = 0;
 $amid            = "";
 $apre            = "";
 $apost           = "";
-$crop            = 0;
 $numofopargs     = 0;
 $passwd          = "";
 $uniqueGuessOnly = "false";
+$wfh             = "NULL";
+$crop            = 0;
 flags();
+unless ($wfh eq "NULL") {
 if ( $overwrite eq "true" ) { unlink($wfn) }
-
 if ( -e $wfn )
 {
    die "File $wfn already present.  Not overwriting, use --overwrite to override.\n";
 }
-
-#open( $wfh, ">>$wfn" ) or die "Couldn't open file $wfn, $!";
-#open( $wfh_tmp, ">>$wfn_tmp" ) or die "Couldn't open $wfn_tmp, $!";
+}
 @goHigh = ( -1 .. $numGoHigh );
 if ( $cropRot > 2 )
 {
@@ -106,8 +106,7 @@ if ( $numGoHigh == -1 )
       }
    }
 }
-
-#close($wfh);
+unless ($wfh eq "NULL") {
 if ( $uniqueGuessOnly eq "true" )
 {
    writeFileUniq();
@@ -115,6 +114,7 @@ if ( $uniqueGuessOnly eq "true" )
 if ( $uniqueGuessOnly eq "false" )
 {
    move( $wfn_tmp, $wfn );
+}
 }
 
 sub doACropRot
@@ -651,8 +651,9 @@ sub flags
 
 sub writeFile
 {
-   open( $wfh_tmp, ">>$wfn_tmp" ) or die "Couldn't open file $wfn_tmp, $!";
-   $overwrite = "true";
+unless ($wfh eq "NULL") {
+open( $wfh_tmp, ">>$wfn_tmp" ) or die "Couldn't open file $wfn_tmp, $!";
+   $overwrite = "true"; 
    if ( $wfh eq "WORDLIST" )
    {
       if ( $verbose eq "true" )
@@ -671,10 +672,15 @@ sub writeFile
    }
    close($wfh_tmp);
    $rfn = $wfn_tmp;
+   }
+   if ($wfh eq "NULL") {
+   print "$combo\n";
+   }
 }
 
 sub writeFileUniq
 {
+unless ($wfh eq "NULL") {
    $rfh = "DUPEREAD";
    open( $rfh, $rfn )     or die "Couldn't open file  $rfn for reading, $!";
    open( $wfh, ">>$wfn" ) or die "Couldn't open file $wfn for writing, $!";
@@ -686,4 +692,5 @@ sub writeFileUniq
    close($wfh_tmp);
    close($wfh);
    unlink($rfn);
+   }
 }
