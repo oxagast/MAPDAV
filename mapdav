@@ -1,26 +1,28 @@
 #!/usr/bin/perl
 # MAPDAV More Accurate Password Dictionary Attack Vector
-# by oxagast, last modified 08,22,2015
+# by oxagast, last modified 08,24,2015
 use warnings;
 use File::Copy qw(move);
-my $version = "v2.4.4";
+use Algorithm::Combinatorics qw(variations);
+my $version = "v2.4.5";
 $semcol = 0;
 $crop = 0;
+$maxPossible = 4;
 if ( scalar(@ARGV) <= 1 )
 {
-   versionStuff();
-   exit(1);
+  versionStuff();
+  exit(1);
 }
 for $issemcol ( 0 .. $#ARGV )
 {
-   if ( $ARGV[$issemcol] =~ m/:/ )
-   {
-      $semcol = 1;
-   }
+  if ( $ARGV[$issemcol] =~ m/:/ )
+  {
+    $semcol = 1;
+  }
 }
 if ( $semcol == 0 )
 {
-   defaultCombos();
+  defaultCombos();
 }
 $wfn_tmp         = "/tmp/wl-" . int( rand(999) );
 $wfh_tmp         = "NONDUPE";
@@ -36,661 +38,692 @@ $passwd          = "";
 $uniqueGuessOnly = "false";
 $wfh             = "NULL";
 $crop            = 0;
+$isAllCombo      = "false";
+@userName[0]     = " ";
 flags();
-unless ($wfh eq "NULL") {
-if ( $overwrite eq "true" ) { unlink($wfn) }
-if ( -e $wfn )
-{
-   die "File $wfn already present.  Not overwriting, use --overwrite to override.\n";
+namesPutTogether();
+if ($isAllCombo eq "true") {
+  allCombos();
 }
+
+unless ($wfh eq "NULL") {
+  if ( $overwrite eq "true" ) { unlink($wfn) }
+  if ( -e $wfn )
+  {
+    die "File $wfn already present.  Not overwriting, use --overwrite to override.\n";
+  }
 }
 @goHigh = ( -1 .. $numGoHigh );
 if ( $cropRot > 2 )
 {
-   if ( $numGoHigh > -1 )
-   {
-      if ( $threads > 1 )
+  if ( $numGoHigh > -1 )
+  {
+    if ( $threads > 1 )
+    {
+      require Parallel::ForkManager or die "You need Parallel::ForkManager to use counts and threading.";
+      Parallel::ForkManager->import;
+      doAParallelCropRotCount();
+    }
+    if ( $threads == 1 )
+    {
+      foreach $curHighNumPre (@goHigh)
       {
-         require Parallel::ForkManager or die "You need Parallel::ForkManager to use counts and threading.";
-         Parallel::ForkManager->import;
-         doAParallelCropRotCount();
+        for $curHighNumMid ( -1 .. $numGoHigh )
+        {
+          for $curHighNumPost ( -1 .. $numGoHigh )
+          {
+            doACropRot();
+          }
+        }
       }
-      if ( $threads == 1 )
-      {
-         foreach $curHighNumPre (@goHigh)
-         {
-            for $curHighNumMid ( -1 .. $numGoHigh )
-            {
-               for $curHighNumPost ( -1 .. $numGoHigh )
-               {
-                  doACropRot();
-               }
-            }
-         }
-      }
-   }
+    }
+  }
 }
 if ( $numGoHigh > -1 )
 {
-   if ( $threads > 1 )
-   {
-      require Parallel::ForkManager or die "You need Parallel::ForkManager to use counts and threading.";
-      Parallel::ForkManager->import;
-      doAParallelCount();
-   }
-   if ( $threads == 1 )
-   {
-      foreach $curHighNumPre (@goHigh)
+  if ( $threads > 1 )
+  {
+    require Parallel::ForkManager or die "You need Parallel::ForkManager to use counts and threading.";
+    Parallel::ForkManager->import;
+    doAParallelCount();
+  }
+  if ( $threads == 1 )
+  {
+    foreach $curHighNumPre (@goHigh)
+    {
+      for $curHighNumMid ( -1 .. $numGoHigh )
       {
-         for $curHighNumMid ( -1 .. $numGoHigh )
-         {
-            for $curHighNumPost ( -1 .. $numGoHigh )
-            {
-               damnDatNameThing();
-            }
-         }
+        for $curHighNumPost ( -1 .. $numGoHigh )
+        {
+          damnDatNameThing();
+        }
       }
-   }
+    }
+  }
 }
 $numGoHigh = -1;
 if ( $numGoHigh == -1 )
 {
-   if ( $cropRot > 2 )
-   {
-      doACropRot();
-   }
-   {
-      if ( $cropRot < 2 )
-      {
-         damnDatNameThing();
-      }
-   }
+  if ( $cropRot > 2 )
+  {
+    doACropRot();
+  }
+  {
+    if ( $cropRot < 2 )
+    {
+      damnDatNameThing();
+    }
+  }
 }
 unless ($wfh eq "NULL") {
-if ( $uniqueGuessOnly eq "true" )
-{
-   writeFileUniq();
-}
-if ( $uniqueGuessOnly eq "false" )
-{
-   move( $wfn_tmp, $wfn );
-}
+  if ( $uniqueGuessOnly eq "true" )
+  {
+    writeFileUniq();
+  }
+  if ( $uniqueGuessOnly eq "false" )
+  {
+    move( $wfn_tmp, $wfn );
+  }
 }
 
 sub doACropRot
 {
-   for $cropRotTurn ( 2 .. $cropRot )
-   {
-      damnDatNameThing();
-   }
+  for $cropRotTurn ( 2 .. $cropRot )
+  {
+    damnDatNameThing();
+  }
 }
 
 sub doAParallelCropRotCount
 {
-   my $cropPM = Parallel::ForkManager->new($threads);
-
-   # Forks and returns the pid for the child:
-   {
-      foreach $curHighNumPre (@goHigh)
+  my $cropPM = Parallel::ForkManager->new($threads);
+  
+  # Forks and returns the pid for the child:
+  {
+    foreach $curHighNumPre (@goHigh)
+    {
+      my $pid = $cropPM->start and next;
+      for $curHighNumMid ( -1 .. $numGoHigh )
       {
-         my $pid = $cropPM->start and next;
-         for $curHighNumMid ( -1 .. $numGoHigh )
-         {
-            for $curHighNumPost ( -1 .. $numGoHigh )
-            {
-               doACropRot();
-            }
-         }
-         $cropPM->finish;    # Terminates the child process
+        for $curHighNumPost ( -1 .. $numGoHigh )
+        {
+          doACropRot();
+        }
       }
-      $cropPM->wait_all_children;
-   }
+      $cropPM->finish;    # Terminates the child process
+    }
+    $cropPM->wait_all_children;
+  }
 }
 
 sub doAParallelCount
 {
-   my $normPM = Parallel::ForkManager->new($threads);
-   foreach $curHighNumPre (@goHigh)
-   {
-      my $pid = $normPM->start and next;
-      for $curHighNumMid ( -1 .. $numGoHigh )
+  my $normPM = Parallel::ForkManager->new($threads);
+  foreach $curHighNumPre (@goHigh)
+  {
+    my $pid = $normPM->start and next;
+    for $curHighNumMid ( -1 .. $numGoHigh )
+    {
+      for $curHighNumPost ( -1 .. $numGoHigh )
       {
-         for $curHighNumPost ( -1 .. $numGoHigh )
-         {
-            damnDatNameThing();
-         }
+        damnDatNameThing();
       }
-      $normPM->finish;    # Terminates the child process
-   }
-   $normPM->wait_all_children;
+    }
+    $normPM->finish;    # Terminates the child process
+  }
+  $normPM->wait_all_children;
 }
 
 sub defaultCombos
 {
-   # Default Combos
-   push @ARGV, "FN:", "LN:", "MN:", "Fi:", "Mi:", "Li:", "FI:", "MI:", "LI:", "FN:LN", "LN:FN";
-   push @ARGV, "FN:MN:LN",   "FN:MI:LN",   "FI:MI:LN", "FN:MI:LI", "FI:MI:LI", "[rev]FN:", "[rev]LN:";
-   push @ARGV, "[rev]FN:LN", "FN:[rev]LN", "[rev]FN:", "[rev]LN:", "[rev]MN:", "fn:",      "ln:", "mn:";
-   push @ARGV, "FI:",        "MI:",        "LI:",      "fn:ln",    "ln:fn",    "fn:mn:ln", "fn:mi:ln", "fi:mi:ln", "fn:mi:li";
-   push @ARGV, "fi:mi:li", "[rev]fn:", "[rev]ln:",   "[rev]fn:ln", "fn:[rev]ln",      "[rev]fn:[rev]ln";
-   push @ARGV, "[rev]mn:", "Fn:",      "Ln:",        "Mn:",        "Fn:Ln",           "Ln:Fn", "Fn:Mn:Ln", "Fn:MI:Ln", "Fi:Mi:Ln";
-   push @ARGV, "Fn:Mi:Li", "Fi:Mi:Li", "[rev]Fn:Ln", "Fn:[rev]Ln", "[rev]Fn:[rev]Ln", "[rev]FN:[rev]LN";
-   push @ARGV, "[rev]Fn:", "[rev]Ln", "[rev]Mn:", "FN:ln", "fn:LN", "LN:fn", "ln:FN", "Fn:ln";
-   push @ARGV, "Ln:fn", "Fn:mn:ln", "Ln:mn:fn", "UN:", "un:", "Un:";
-   $semcol = 1;
+  # Default Combos
+  push @ARGV, "FN:", "LN:", "MN:", "Fi:", "Mi:", "Li:", "FI:", "MI:", "LI:", "FN:LN", "LN:FN";
+  push @ARGV, "FN:MN:LN",   "FN:MI:LN",   "FI:MI:LN", "FN:MI:LI", "FI:MI:LI", "[rev]FN:", "[rev]LN:";
+  push @ARGV, "[rev]FN:LN", "FN:[rev]LN", "[rev]FN:", "[rev]LN:", "[rev]MN:", "fn:",      "ln:", "mn:";
+  push @ARGV, "FI:",        "MI:",        "LI:",      "fn:ln",    "ln:fn",    "fn:mn:ln", "fn:mi:ln", "fi:mi:ln", "fn:mi:li";
+  push @ARGV, "fi:mi:li", "[rev]fn:", "[rev]ln:",   "[rev]fn:ln", "fn:[rev]ln",      "[rev]fn:[rev]ln";
+  push @ARGV, "[rev]mn:", "Fn:",      "Ln:",        "Mn:",        "Fn:Ln",           "Ln:Fn", "Fn:Mn:Ln", "Fn:MI:Ln", "Fi:Mi:Ln";
+  push @ARGV, "Fn:Mi:Li", "Fi:Mi:Li", "[rev]Fn:Ln", "Fn:[rev]Ln", "[rev]Fn:[rev]Ln", "[rev]FN:[rev]LN";
+  push @ARGV, "[rev]Fn:", "[rev]Ln", "[rev]Mn:", "FN:ln", "fn:LN", "LN:fn", "ln:FN", "Fn:ln";
+  push @ARGV, "Ln:fn", "Fn:mn:ln", "Ln:mn:fn", "UN:", "un:", "Un:";
+  $semcol = 1;
 }
+
+sub allCombos
+{
+  for $howManyPossible (1..$maxPossible) {
+    @possibles = qw(FN: LN: fn: ln: Ln: Fn: Fi: fi: Li: li: FI: Mi: MI: mi: Mn: MN: mn: Un: UN: un: [rev]FN: [rev]LN: [rev]fn: [rev]ln: [rev]Ln: [rev]Fn: [rev]Fi: [rev]fi: [rev]Li: [rev]li: [rev]FI: [rev]Mi: [rev]MI: [rev]mi: [rev]Mn: [rev]MN: [rev]mn: [rev]Un: [rev]UN: [rev]un:);
+    my $iter = variations(\@possibles, $howManyPossible);
+    while (my $c = $iter->next) {
+      push (@blah, "@$c");
+    }
+  }
+  for $perm (0..$#blah) {
+    $blah[$perm] =~ s/ //g;
+    push (@ARGV, $blah[$perm]);
+  }
+}
+
 
 sub versionStuff
 {
-   print "MAPDAV $version\n";
-   print "Useage: $0 \[options\] \{combinations\}\n";
-   print "  OPTIONS:\n";
-   print "   --passwdfile <file>: Password file you want to use\n";
-   print "   --hydra <file>: Output to THCHydra file format\n";
-   print "   --wordlist <file>: Output to wordlist file format\n";
-   print "   --singleuser <username>: Only process a single user\n";
-   print "   --append-post xyz: Append string to the end of each combination\n";
-   print "   --append-mid xyz: Append string inbetween names of each combination\n";
-   print "   --append-pre xyz: Append string to the beginning of each combination\n";
-   print "   --crop x: Crop the passwords to this many characters\n";
-   print "   --crop-rotate x: Rotate around cropping from 2 through x characters\n";
-   print "   --count x: Count through numbers 0 through x and put in places\n                (this takes awhile, DO NOT SET THIS TOO HIGH! >9)\n";
-   print "   --overwrite: MAPDAV will overwrite the destined output file\n";
-   print "   --unique: Only output unique values\n";
-   print "   --threads x: How many processing threads to use, this applies to counts\n";
-   print "   --username <username>: A username for singular input\n";
-   print "   --full-name <\"Their Full Name\">: Their full name for singular input\n";
-   print "   --verbose: Make output verbose\n";
-   print "   --version: Print the version\n";
-   print "  COMBINATIONS:\n";
-   print "   fn Fn FN fi Fi mn Mn MN mi Mi ln Ln LN li Li un Un UN\n";
-   print "  MODIFIERS:\n";
-   print "   [rev]\n";
-   print "\n       ex:\n";
-   print "           $0 --passwdfile passwd --hydra names.hydra --overwrite --unique FN:LN [rev]fn:\n";
-   print "           $0 --passwdfile passwd --wordlist names.wl\n";
-   print "           $0 --passwdfile passwd --hydra names.hydra --crop 8\n";
-   print "           $0 --full-name \"John Unknown Doe\" --username djohn --count 9 --overwrite --wordlist jud.out --threads 8 --verbose\n";
+  print "MAPDAV $version\n";
+  print "Useage: $0 \[options\] \{combinations\}\n";
+  print "  OPTIONS:\n";
+  print "   --passwdfile <file>: Password file you want to use\n";
+  print "   --hydra <file>: Output to THCHydra file format\n";
+  print "   --wordlist <file>: Output to wordlist file format\n";
+  print "   --singleuser <username>: Only process a single user\n";
+  print "   --append-post xyz: Append string to the end of each combination\n";
+  print "   --append-mid xyz: Append string inbetween names of each combination\n";
+  print "   --append-pre xyz: Append string to the beginning of each combination\n";
+  print "   --crop x: Crop the passwords to this many characters\n";
+  print "   --crop-rotate x: Rotate around cropping from 2 through x characters\n";
+  print "   --count x: Count through numbers 0 through x and put in places\n                (this takes awhile, DO NOT SET THIS TOO HIGH! >9)\n";
+  print "   --overwrite: MAPDAV will overwrite the destined output file\n";
+  print "   --unique: Only output unique values\n";
+  print "   --threads x: How many processing threads to use, this applies to counts\n";
+  print "   --username <username>: A username for singular input\n";
+  print "   --full-name <\"Their Full Name\">: Their full name for singular input\n";
+  print "   --exaust: Exhaustive list of combinations.  List will be very large\n";
+  print "   --verbose: Make output verbose\n";
+  print "   --version: Print the version\n";
+  print "  COMBINATIONS:\n";
+  print "   fn Fn FN fi Fi mn Mn MN mi Mi ln Ln LN li Li un Un UN\n";
+  print "  MODIFIERS:\n";
+  print "   [rev]\n";
+  print "\n       ex:\n";
+  print "           $0 --passwdfile passwd --hydra names.hydra --overwrite --unique FN:LN [rev]fn:\n";
+  print "           $0 --passwdfile passwd --wordlist names.wl\n";
+  print "           $0 --passwdfile passwd --hydra names.hydra --crop 8\n";
+  print "           $0 --full-name \"John Unknown Doe\" --username djohn --count 9 --overwrite --wordlist jud.out --threads 8 --verbose\n";
 }
 
 sub flags
 {
-   #  grabs all our options
-   if ( ( ( scalar(@ARGV) > 0 ) && ( $semcol == 1 ) ) || ( $ARGV[0] eq "--version" ) )
-   {
-      my $numOfOpArgs = 0;
-      $apost      = "";
-      $apre       = "";
-      $verbose    = "false";
-      $versionarg = "false";
-      $singleuser = "notsingleusermode";
-      for my $optarg ( 0 .. $#ARGV )
+  #  grabs all our options
+  if ( ( ( scalar(@ARGV) > 0 ) && ( $semcol == 1 ) ) || ( $ARGV[0] eq "--version" ) )
+  {
+    my $numOfOpArgs = 0;
+    $apost      = "";
+    $apre       = "";
+    $verbose    = "false";
+    $versionarg = "false";
+    $singleuser = "notsingleusermode";
+    for my $optarg ( 0 .. $#ARGV )
+    {
+      
+      if ( $ARGV[$optarg] eq "--passwdfile" )
       {
-
-         if ( $ARGV[$optarg] eq "--passwdfile" )
-         {
-            $passwd      = $ARGV[ $optarg + 1 ];
-            $numOfOpArgs = $numOfOpArgs + 2;
-         }
-         if ( $ARGV[$optarg] eq "--hydra" )
-         {
-            $wfh         = "HYDRA";
-            $wfn         = $ARGV[ $optarg + 1 ];
-            $numOfOpArgs = $numOfOpArgs + 2;
-         }
-         if ( $ARGV[$optarg] eq "--wordlist" )
-         {
-            $wfh         = "WORDLIST";
-            $wfn         = $ARGV[ $optarg + 1 ];
-            $numOfOpArgs = $numOfOpArgs + 2;
-         }
-         if ( $ARGV[$optarg] eq "--unique" )
-         {
-            $uniqueGuessOnly = "true";
-            $numOfOpArgs++;
-         }
-         if ( $ARGV[$optarg] eq "--append-post" )
-         {
-            $apost       = $ARGV[ $optarg + 1 ];
-            $numOfOpArgs = $numOfOpArgs + 2;
-         }
-         if ( $ARGV[$optarg] eq "--append-pre" )
-         {
-            $apre        = $ARGV[ $optarg + 1 ];
-            $numOfOpArgs = $numOfOpArgs + 2;
-         }
-         if ( $ARGV[$optarg] eq "--append-mid" )
-         {
-            $amid        = $ARGV[ $optarg + 1 ];
-            $numOfOpArgs = $numOfOpArgs + 2;
-         }
-         if ( $ARGV[$optarg] eq "--crop" )
-         {
-            $crop        = $ARGV[ $optarg + 1 ];
-            $numOfOpArgs = $numOfOpArgs + 2;
-         }
-         if ( $ARGV[$optarg] eq "--crop-rotate" )
-         {
-            $cropRot     = $ARGV[ $optarg + 1 ];
-            $numOfOpArgs = $numOfOpArgs + 2;
-         }
-         if ( $ARGV[$optarg] eq "--count" )
-         {
-            $numGoHigh   = $ARGV[ $optarg + 1 ];
-            $numOfOpArgs = $numOfOpArgs + 2;
-         }
-         if ( $ARGV[$optarg] eq "--threads" )
-         {
-            $threads     = $ARGV[ $optarg + 1 ];
-            $numOfOpArgs = $numOfOpArgs + 2;
-         }
-         if ( $ARGV[$optarg] eq "--verbose" )
-         {
-            $verbose = "true";
-            $numOfOpArgs++;
-         }
-         if ( $ARGV[$optarg] eq "--version" )
-         {
-            $versionarg = "true";
-            $numOfOpArgs++;
-         }
-         if ( $ARGV[$optarg] eq "--overwrite" )
-         {
-            $overwrite = "true";
-            $numOfOpArgs++;
-         }
-         if ( $ARGV[$optarg] eq "--singleuser" )
-         {
-            $singleuser = $ARGV[ $optarg + 1 ];
-            $numOfOpArgs++;
-         }
-         if ( $ARGV[$optarg] eq "--username" )
-         {
-            push( @userName, $ARGV[ $optarg + 1 ] );
-            $user        = 0;
-            $numOfOpArgs = $numOfOpArgs + 2;
-         }
-         if ( $ARGV[$optarg] eq "--full-name" )
-         {
-            push( @fullname, $ARGV[ $optarg + 1 ] );
-            $user        = 0;
-            $numOfOpArgs = $numOfOpArgs + 2;
-         }
+        $passwd      = $ARGV[ $optarg + 1 ];
+        $numOfOpArgs = $numOfOpArgs + 2;
       }
-      if ( $versionarg eq "true" )
+      if ( $ARGV[$optarg] eq "--hydra" )
       {
-         print STDERR "MAPDAV $version\n";
-         exit;
+        $wfh         = "HYDRA";
+        $wfn         = $ARGV[ $optarg + 1 ];
+        $numOfOpArgs = $numOfOpArgs + 2;
       }
-      if ( $verbose eq "true" )
+      if ( $ARGV[$optarg] eq "--wordlist" )
       {
-         print STDERR "MAPDAV $version\n";
+        $wfh         = "WORDLIST";
+        $wfn         = $ARGV[ $optarg + 1 ];
+        $numOfOpArgs = $numOfOpArgs + 2;
       }
-      if ( $passwd ne "" )
+      if ( $ARGV[$optarg] eq "--unique" )
       {
-         openPasswordFile();
+        $uniqueGuessOnly = "true";
+        $numOfOpArgs++;
       }
-   }
-
-   sub openPasswordFile
-   {
-      #open passwd file
-      open( PASSWDFILE, $passwd ) || die "Couldn't open $passwd, $!";
-      my @passwdfile = <PASSWDFILE>;
-      close(PASSWDFILE);
-      if ( $singleuser ne "notsingleusermode" )
+      if ( $ARGV[$optarg] eq "--exhaust" )
       {
-         for my $passwdusers ( 0 .. $#passwdfile )
-         {
-            my @allusers = split( /:/, $passwdfile[$passwdusers] );
-            if ( $allusers[0] eq $singleuser )
-            {
-               @passwdfile = $passwdfile[$passwdusers];
-               last;
-            }
-         }
+        $isAllCombo = "true";
+        $numOfOpArgs++;
       }
-
-      # Get the name and username portions of the passwd file that have valid shells
-      for my $line ( 0 .. $#passwdfile )
+      if ( $ARGV[$optarg] eq "--append-post" )
       {
-         if ( ( $passwdfile[$line] =~ m/bin\/bash$/ ) || ( $passwdfile[$line] =~ m/bin\/ksh$/ ) || ( $passwdfile[$line] =~ m/bin\/csh$/ ) || ( $passwdfile[$line] =~ m/bin\/sh$/ ) || ( $passwdfile[$line] =~ m/bin\/tcsh$/ ) )
-         {
-            my @splitline = split( /:/, $passwdfile[$line] );
-            if ( $splitline[4] ne "" )
-            {
-               push( @fullname, $splitline[4] );
-               push( @userName, $splitline[0] );
-            }
-            if ( $splitline[4] eq "" )
-            {
-               print "Sorry, MAPDAV cannot use this file because there is nothing in the GECOS feild.\n";
-               exit;
-            }
-         }
+        $apost       = $ARGV[ $optarg + 1 ];
+        $numOfOpArgs = $numOfOpArgs + 2;
       }
-   }
-
-   sub damnDatNameThing
-   {
-      # Make some formatting corrections
-      for my $correct ( 0 .. $#fullname )
+      if ( $ARGV[$optarg] eq "--append-pre" )
       {
-         $fullname[$correct] =~ s/\W/ /g;
-         $fullname[$correct] =~ s/\d//g;
-         $fullname[$correct] =~ s/\s{2,}/ /g;
+        $apre        = $ARGV[ $optarg + 1 ];
+        $numOfOpArgs = $numOfOpArgs + 2;
       }
-      for $name ( 0 .. scalar(@fullname) - 2 )
+      if ( $ARGV[$optarg] eq "--append-mid" )
       {
-         $fullname[$name] = lc( $fullname[$name] );
+        $amid        = $ARGV[ $optarg + 1 ];
+        $numOfOpArgs = $numOfOpArgs + 2;
       }
-
-      # Get names
+      if ( $ARGV[$optarg] eq "--crop" )
+      {
+        $crop        = $ARGV[ $optarg + 1 ];
+        $numOfOpArgs = $numOfOpArgs + 2;
+      }
+      if ( $ARGV[$optarg] eq "--crop-rotate" )
+      {
+        $cropRot     = $ARGV[ $optarg + 1 ];
+        $numOfOpArgs = $numOfOpArgs + 2;
+      }
+      if ( $ARGV[$optarg] eq "--count" )
+      {
+        $numGoHigh   = $ARGV[ $optarg + 1 ];
+        $numOfOpArgs = $numOfOpArgs + 2;
+      }
+      if ( $ARGV[$optarg] eq "--threads" )
+      {
+        $threads     = $ARGV[ $optarg + 1 ];
+        $numOfOpArgs = $numOfOpArgs + 2;
+      }
+      if ( $ARGV[$optarg] eq "--verbose" )
+      {
+        $verbose = "true";
+        $numOfOpArgs++;
+      }
+      if ( $ARGV[$optarg] eq "--version" )
+      {
+        $versionarg = "true";
+        $numOfOpArgs++;
+      }
+      if ( $ARGV[$optarg] eq "--overwrite" )
+      {
+        $overwrite = "true";
+        $numOfOpArgs++;
+      }
+      if ( $ARGV[$optarg] eq "--singleuser" )
+      {
+        $singleuser = $ARGV[ $optarg + 1 ];
+        $numOfOpArgs++;
+      }
+      if ( $ARGV[$optarg] eq "--username" )
+      {
+        @userName[0] = $ARGV[ $optarg + 1 ];
+        $user        = 0;
+        $numOfOpArgs = $numOfOpArgs + 2;
+      }
+      if ( $ARGV[$optarg] eq "--full-name" )
+      {
+        push( @fullname, $ARGV[ $optarg + 1 ] );
+        $user        = 0;
+        $numOfOpArgs = $numOfOpArgs + 2;
+      }
+    }
+    if ( $versionarg eq "true" )
+    {
+      print STDERR "MAPDAV $version\n";
+      exit;
+    }
+    if ( $verbose eq "true" )
+    {
+      print STDERR "MAPDAV $version\n";
+    }
+    if ( $passwd ne "" )
+    {
+      openPasswordFile();
+    }    
+  }
+  
+  sub openPasswordFile
+  {
+    #open passwd file
+    open( PASSWDFILE, $passwd ) || die "Couldn't open $passwd, $!";
+    my @passwdfile = <PASSWDFILE>;
+    close(PASSWDFILE);
+    if ( $singleuser ne "notsingleusermode" )
+    {
+      for my $passwdusers ( 0 .. $#passwdfile )
+      {
+        my @allusers = split( /:/, $passwdfile[$passwdusers] );
+        if ( $allusers[0] eq $singleuser )
+        {
+          @passwdfile = $passwdfile[$passwdusers];
+          last;
+        }
+      }
+    }
+    
+    # Get the name and username portions of the passwd file that have valid shells
+    for my $line ( 0 .. $#passwdfile )
+    {
+      if ( ( $passwdfile[$line] =~ m/bin\/bash$/ ) || ( $passwdfile[$line] =~ m/bin\/ksh$/ ) || ( $passwdfile[$line] =~ m/bin\/csh$/ ) || ( $passwdfile[$line] =~ m/bin\/sh$/ ) || ( $passwdfile[$line] =~ m/bin\/tcsh$/ ) )
+      {
+        my @splitline = split( /:/, $passwdfile[$line] );
+        if ( $splitline[4] ne "" )
+        {
+          push( @fullname, $splitline[4] );
+          push( @userName, $splitline[0] );
+        }
+        if ( $splitline[4] eq "" )
+        {
+          print "Sorry, MAPDAV cannot use this file because there is nothing in the GECOS feild.\n";
+          exit;
+        }
+      }
+    }
+  }
+  
+  sub namesPutTogether
+  {
+    # Make some formatting corrections
+    for my $correct ( 0 .. $#fullname )
+    {
+      $fullname[$correct] =~ s/\W/ /g;
+      $fullname[$correct] =~ s/\d//g;
+      $fullname[$correct] =~ s/\s{2,}/ /g;
+    }
+    for $name ( 0 .. scalar(@fullname) - 2 )
+    {
+      $fullname[$name] = lc( $fullname[$name] );
+    }
+    # Get names
+    for $name ( 0 .. $#fullname )
+    {
       # Get first name
-      for $name ( 0 .. $#fullname )
+      if ( $fullname[$name] =~ m/(\w+) / )
       {
-         if ( $fullname[$name] =~ m/(\w+) / )
-         {
-            push( @firstnamepad,    $1 );
-            push( @Firstnamepad,    ucfirst($1) );
-            push( @FIRSTNAMEpad,    uc($1) );
-            push( @firstinitpad,    substr( $1, 0, 1 ) );
-            push( @Firstinitpad,    substr( uc($1), 0, 1 ) );
-            push( @firstnamerevpad, reverse($1) );
-            push( @Firstnamerevpad, reverse( ucfirst($1) ) );
-            push( @FIRSTNAMErevpad, reverse( uc($1) ) );
-         }
-         else
-         {
-            push( @firstnamepad,    "" );
-            push( @Firstnamepad,    "" );
-            push( @FIRSTNAMEpad,    "" );
-            push( @firstinitpad,    "" );
-            push( @Firstinitpad,    "" );
-            push( @firstnamerevpad, "" );
-            push( @Firstnamerevpad, "" );
-            push( @FIRSTNAMErevpad, "" );
-         }
-
-         # Get middle name
-         if ( $fullname[$name] =~ m/^\w+ (\w+) \w+/ )
-         {
-            push( @middlenamepad,    $1 );
-            push( @Middlenamepad,    ucfirst($1) );
-            push( @MIDDLENAMEpad,    uc($1) );
-            push( @middleinitpad,    substr( $1, 0, 1 ) );
-            push( @Middleinitpad,    substr( uc($1), 0, 1 ) );
-            push( @middlenamerevpad, reverse($1) );
-            push( @Middlenamerevpad, reverse( ucfirst($1) ) );
-            push( @MIDDLENAMErevpad, reverse( uc($1) ) );
-         }
-         else
-         {
-            push( @middlenamepad,    "" );
-            push( @Middlenamepad,    "" );
-            push( @MIDDLENAMEpad,    "" );
-            push( @middleinitpad,    "" );
-            push( @Middleinitpad,    "" );
-            push( @middlenamerevpad, "" );
-            push( @Middlenamerevpad, "" );
-            push( @MIDDLENAMErevpad, "" );
-         }
-
-         # Get last name
-         if ( $fullname[$name] =~ m/ (\w+)$/ )
-         {
-            push( @lastnamepad,    $1 );
-            push( @Lastnamepad,    ucfirst($1) );
-            push( @LASTNAMEpad,    uc($1) );
-            push( @lastinitpad,    substr( $1, 0, 1 ) );
-            push( @Lastinitpad,    substr( uc($1), 0, 1 ) );
-            push( @lastnamerevpad, reverse($1) );
-            push( @Lastnamerevpad, reverse( ucfirst($1) ) );
-            push( @LASTNAMErevpad, reverse( uc($1) ) );
-         }
-         else
-         {
-            push( @lastnamepad,    "" );
-            push( @Lastnamepad,    "" );
-            push( @LASTNAMEpad,    "" );
-            push( @lastinitpad,    "" );
-            push( @Lastinitpad,    "" );
-            push( @lastnamerevpad, "" );
-            push( @Lastnamerevpad, "" );
-            push( @LASTNAMErevpad, "" );
-         }
+        push( @firstnamepad,    $1 );
+        push( @Firstnamepad,    ucfirst($1) );
+        push( @FIRSTNAMEpad,    uc($1) );
+        push( @firstinitpad,    substr( $1, 0, 1 ) );
+        push( @Firstinitpad,    substr( uc($1), 0, 1 ) );
+        push( @firstnamerevpad, reverse($1) );
+        push( @Firstnamerevpad, reverse( ucfirst($1) ) );
+        push( @FIRSTNAMErevpad, reverse( uc($1) ) );
       }
-
-      # Put together the name combinations
-      for $args ( 0 .. $#ARGV )
+      else
       {
-         if ( $ARGV[ $args + $numofopargs ] =~ m/:/g )
-         {
-            my @curarg = split( /:/, $ARGV[ $args + $numofopargs ] );
-            $combo = "";
-            for $user ( 0 .. $#fullname )
+        push( @firstnamepad,    "" );
+        push( @Firstnamepad,    "" );
+        push( @FIRSTNAMEpad,    "" );
+        push( @firstinitpad,    "" );
+        push( @Firstinitpad,    "" );
+        push( @firstnamerevpad, "" );
+        push( @Firstnamerevpad, "" );
+        push( @FIRSTNAMErevpad, "" );
+      }
+      
+      # Get middle name
+      if ( $fullname[$name] =~ m/^\w+ (\w+) \w+/ )
+      {
+        push( @middlenamepad,    $1 );
+        push( @Middlenamepad,    ucfirst($1) );
+        push( @MIDDLENAMEpad,    uc($1) );
+        push( @middleinitpad,    substr( $1, 0, 1 ) );
+        push( @Middleinitpad,    substr( uc($1), 0, 1 ) );
+        push( @middlenamerevpad, reverse($1) );
+        push( @Middlenamerevpad, reverse( ucfirst($1) ) );
+        push( @MIDDLENAMErevpad, reverse( uc($1) ) );
+      }
+      else
+      {
+        push( @middlenamepad,    "" );
+        push( @Middlenamepad,    "" );
+        push( @MIDDLENAMEpad,    "" );
+        push( @middleinitpad,    "" );
+        push( @Middleinitpad,    "" );
+        push( @middlenamerevpad, "" );
+        push( @Middlenamerevpad, "" );
+        push( @MIDDLENAMErevpad, "" );
+      }
+      
+      # Get last name
+      if ( $fullname[$name] =~ m/ (\w+)$/ )
+      {
+        push( @lastnamepad,    $1 );
+        push( @Lastnamepad,    ucfirst($1) );
+        push( @LASTNAMEpad,    uc($1) );
+        push( @lastinitpad,    substr( $1, 0, 1 ) );
+        push( @Lastinitpad,    substr( uc($1), 0, 1 ) );
+        push( @lastnamerevpad, reverse($1) );
+        push( @Lastnamerevpad, reverse( ucfirst($1) ) );
+        push( @LASTNAMErevpad, reverse( uc($1) ) );
+      }
+      else
+      {
+        push( @lastnamepad,    "" );
+        push( @Lastnamepad,    "" );
+        push( @LASTNAMEpad,    "" );
+        push( @lastinitpad,    "" );
+        push( @Lastinitpad,    "" );
+        push( @lastnamerevpad, "" );
+        push( @Lastnamerevpad, "" );
+        push( @LASTNAMErevpad, "" );
+      }
+    }
+  }
+  
+  sub damnDatNameThing
+  {
+    # Put together the name combinations
+    for $args ( 0 .. $#ARGV )
+    {
+      if ( $ARGV[ $args + $numofopargs ] =~ m/:/g )
+      {
+        my @curarg = split( /:/, $ARGV[ $args + $numofopargs ] );
+        $combo = "";
+        for $user ( 0 .. $#fullname )
+        {
+          for $curargs ( 0 .. $#curarg )
+          {
+            if ( $curarg[$curargs] eq "fn" )
             {
-               for $curargs ( 0 .. $#curarg )
-               {
-                  if ( $curarg[$curargs] eq "fn" )
-                  {
-                     $combo = "$combo$firstnamepad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "Fn" )
-                  {
-                     $combo = "$combo$Firstnamepad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "FN" )
-                  {
-                     $combo = "$combo$FIRSTNAMEpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "[rev]fn" )
-                  {
-                     $combo = "$combo$firstnamerevpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "[rev]Fn" )
-                  {
-                     $combo = "$combo$Firstnamerevpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "[rev]FN" )
-                  {
-                     $combo = "$combo$FIRSTNAMErevpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "fi" )
-                  {
-                     $combo = "$combo$firstinitpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "Fi" )
-                  {
-                     $combo = "$combo$Firstinitpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "mn" )
-                  {
-                     $combo = "$combo$middlenamepad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "Mn" )
-                  {
-                     $combo = "$combo$Middlenamepad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "MN" )
-                  {
-                     $combo = "$combo$MIDDLENAMEpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "[rev]mn" )
-                  {
-                     $combo = "$combo$middlenamerevpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "[rev]Mn" )
-                  {
-                     $combo = "$combo$Middlenamerevpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "[rev]MN" )
-                  {
-                     $combo = "$combo$MIDDLENAMErevpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "mi" )
-                  {
-                     $combo = "$combo$middleinitpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "Mi" )
-                  {
-                     $combo = "$combo$Middleinitpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "ln" )
-                  {
-                     $combo = "$combo$lastnamepad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "Ln" )
-                  {
-                     $combo = "$combo$Lastnamepad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "LN" )
-                  {
-                     $combo = "$combo$LASTNAMEpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "[rev]ln" )
-                  {
-                     $combo = "$combo$lastnamerevpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "[rev]Ln" )
-                  {
-                     $combo = "$combo$Lastnamerevpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "[rev]LN" )
-                  {
-                     $combo = "$combo$LASTNAMErevpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "li" )
-                  {
-                     $combo = "$combo$lastinitpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "Li" )
-                  {
-                     $combo = "$combo$Lastinitpad[$user]";
-                  }
-                  if ( $curarg[$curargs] eq "UN" )
-                  {
-                     $userUC = uc( $userName[$user] );
-                     $combo  = "$combo$userUC";
-                  }
-                  if ( $curarg[$curargs] eq "Un" )
-                  {
-                     $userUc = ucfirst( $userName[$user] );
-                     $combo  = "$combo$userUc";
-                  }
-                  if ( $curarg[$curargs] eq "un" )
-                  {
-                     $userlc = lc( $userName[$user] );
-                     $combo  = "$combo$userlc";
-                  }
-                  if ( $curarg[$curargs] eq "[rev]UN" )
-                  {
-                     $userUC = reverse( uc( $userName[$user] ) );
-                     $combo  = "$combo$userUC";
-                  }
-                  if ( $curarg[$curargs] eq "[rev]Un" )
-                  {
-                     $userUc = reverse( ucfirst( $userName[$user] ) );
-                     $combo  = "$combo$userUc";
-                  }
-                  if ( $curarg[$curargs] eq "[rev]un" )
-                  {
-                     $userlc = reverse( lc( $userName[$user] ) );
-                     $combo  = "$combo$userlc";
-                  }
-                  $combo = "$combo$amid";
-                  if ( $combo =~ m/$amid$/ )
-                  {
-                     chomp($combo);
-                  }
-                  if ( $numGoHigh > 0 )
-                  {
-                     $combo = "$combo$curHighNumMid";
-                     if ( $combo =~ m/$curHighNumMid$/ )
-                     {
-                        chomp($combo);
-                     }
-                  }
-               }
-               $combo = "$apre$combo$apost";
-               if ( $combo =~ m/$amid$apost$/ )
-               {
-                  $combo =~ s/$amid$apost$/$apost/g;
-               }
-               if ( $numGoHigh > 0 )
-               {
-                  $combo = $curHighNumPre . $combo . $curHighNumPost;
-                  if ( $combo =~ m/$curHighNumMid$curHighNumPost$/ )
-                  {
-                     $combo =~ s/$curHighNumMid$curHighNumPost$/$curHighNumPost/g;
-                  }
-                  if ( $combo =~ m/$curHighNumMid$curHighNumMid\w/ )
-                  {
-                     $combo =~ s/$curHighNumMid$curHighNumMid(\w)/$curHighNumMid$1/g;
-                  }
-                  $combo =~ s/(\-1|\-0)//g;
-               }
-               if ( $cropRot > 2 )
-               {
-                  $crop = $cropRotTurn;
-               }
-               if ( $crop > 0 )
-               {
-                  $combo = substr( $combo, 0, $crop );
-               }
-               unless ( ( $combo eq "" ) || ( $userName[$user] eq "" ) )
-               {
-                  writeFile();
-               }
-               $combo = "";
+              $combo = "$combo$firstnamepad[$user]";
             }
-         }
+            if ( $curarg[$curargs] eq "Fn" )
+            {
+              $combo = "$combo$Firstnamepad[$user]";
+            }
+            if ( $curarg[$curargs] eq "FN" )
+            {
+              $combo = "$combo$FIRSTNAMEpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "[rev]fn" )
+            {
+              $combo = "$combo$firstnamerevpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "[rev]Fn" )
+            {
+              $combo = "$combo$Firstnamerevpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "[rev]FN" )
+            {
+              $combo = "$combo$FIRSTNAMErevpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "fi" )
+            {
+              $combo = "$combo$firstinitpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "Fi" )
+            {
+              $combo = "$combo$Firstinitpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "mn" )
+            {
+              $combo = "$combo$middlenamepad[$user]";
+            }
+            if ( $curarg[$curargs] eq "Mn" )
+            {
+              $combo = "$combo$Middlenamepad[$user]";
+            }
+            if ( $curarg[$curargs] eq "MN" )
+            {
+              $combo = "$combo$MIDDLENAMEpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "[rev]mn" )
+            {
+              $combo = "$combo$middlenamerevpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "[rev]Mn" )
+            {
+              $combo = "$combo$Middlenamerevpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "[rev]MN" )
+            {
+              $combo = "$combo$MIDDLENAMErevpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "mi" )
+            {
+              $combo = "$combo$middleinitpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "Mi" )
+            {
+              $combo = "$combo$Middleinitpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "ln" )
+            {
+              $combo = "$combo$lastnamepad[$user]";
+            }
+            if ( $curarg[$curargs] eq "Ln" )
+            {
+              $combo = "$combo$Lastnamepad[$user]";
+            }
+            if ( $curarg[$curargs] eq "LN" )
+            {
+              $combo = "$combo$LASTNAMEpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "[rev]ln" )
+            {
+              $combo = "$combo$lastnamerevpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "[rev]Ln" )
+            {
+              $combo = "$combo$Lastnamerevpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "[rev]LN" )
+            {
+              $combo = "$combo$LASTNAMErevpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "li" )
+            {
+              $combo = "$combo$lastinitpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "Li" )
+            {
+              $combo = "$combo$Lastinitpad[$user]";
+            }
+            if ( $curarg[$curargs] eq "UN" )
+            {
+              $userUC = uc( $userName[$user] );
+              $combo  = "$combo$userUC";
+            }
+            if ( $curarg[$curargs] eq "Un" )
+            {
+              $userUc = ucfirst( $userName[$user] );
+              $combo  = "$combo$userUc";
+            }
+            if ( $curarg[$curargs] eq "un" )
+            {
+              $userlc = lc( $userName[$user] );
+              $combo  = "$combo$userlc";
+            }
+            if ( $curarg[$curargs] eq "[rev]UN" )
+            {
+              $userUC = reverse( uc( $userName[$user] ) );
+              $combo  = "$combo$userUC";
+            }
+            if ( $curarg[$curargs] eq "[rev]Un" )
+            {
+              $userUc = reverse( ucfirst( $userName[$user] ) );
+              $combo  = "$combo$userUc";
+            }
+            if ( $curarg[$curargs] eq "[rev]un" )
+            {
+              $userlc = reverse( lc( $userName[$user] ) );
+              $combo  = "$combo$userlc";
+            }
+            $combo = "$combo$amid";
+            if ( $combo =~ m/$amid$/ )
+            {
+              chomp($combo);
+            }
+            if ( $numGoHigh > 0 )
+            {
+              $combo = "$combo$curHighNumMid";
+              if ( $combo =~ m/$curHighNumMid$/ )
+              {
+                chomp($combo);
+              }
+            }
+          }
+          $combo = "$apre$combo$apost";
+          if ( $combo =~ m/$amid$apost$/ )
+          {
+            $combo =~ s/$amid$apost$/$apost/g;
+          }
+          if ( $numGoHigh > 0 )
+          {
+            $combo = $curHighNumPre . $combo . $curHighNumPost;
+            if ( $combo =~ m/$curHighNumMid$curHighNumPost$/ )
+            {
+              $combo =~ s/$curHighNumMid$curHighNumPost$/$curHighNumPost/g;
+            }
+            if ( $combo =~ m/$curHighNumMid$curHighNumMid\w/ )
+            {
+              $combo =~ s/$curHighNumMid$curHighNumMid(\w)/$curHighNumMid$1/g;
+            }
+            $combo =~ s/(\-1|\-0)//g;
+          }
+          if ( $cropRot > 2 )
+          {
+            $crop = $cropRotTurn;
+          }
+          if ( $crop > 0 )
+          {
+            $combo = substr( $combo, 0, $crop );
+          }
+          unless ( ( $combo eq "" ) || ( $userName[$user] eq "" ) )
+          {
+            writeFile();
+          }
+          $combo = "";
+        }
       }
-   }
+    }
+  }
 }
 
 sub writeFile
 {
-unless ($wfh eq "NULL") {
-open( $wfh_tmp, ">>$wfn_tmp" ) or die "Couldn't open file $wfn_tmp, $!";
-   $overwrite = "true"; 
-   if ( $wfh eq "WORDLIST" )
-   {
+  unless ($wfh eq "NULL") {
+    open( $wfh_tmp, ">>$wfn_tmp" ) or die "Couldn't open file $wfn_tmp, $!";
+    $overwrite = "true"; 
+    if ( $wfh eq "WORDLIST" )
+    {
       if ( $verbose eq "true" )
       {
-         print "$combo\n";
+        print "$combo\n";
       }
       print $wfh_tmp "$combo\n";
-   }
-   if ( $wfh eq "HYDRA" )
-   {
+    }
+    if ( $wfh eq "HYDRA" )
+    {
       if ( $verbose eq "true" )
       {
-         print "$userName[$user]:$combo\n";
+        print "$userName[$user]:$combo\n";
       }
       print $wfh_tmp "$userName[$user]:$combo\n";
-   }
-   close($wfh_tmp);
-   $rfn = $wfn_tmp;
-   }
-   if ($wfh eq "NULL") {
-   print "$combo\n";
-   }
+    }
+    close($wfh_tmp);
+    $rfn = $wfn_tmp;
+  }
+  if ($wfh eq "NULL") {
+    print "$combo\n";
+  }
 }
 
 sub writeFileUniq
 {
-unless ($wfh eq "NULL") {
-   $rfh = "DUPEREAD";
-   open( $rfh, $rfn )     or die "Couldn't open file  $rfn for reading, $!";
-   open( $wfh, ">>$wfn" ) or die "Couldn't open file $wfn for writing, $!";
-   my %seen;
-   while (<$rfh>)
-   {
+  unless ($wfh eq "NULL") {
+    $rfh = "DUPEREAD";
+    open( $rfh, $rfn )     or die "Couldn't open file  $rfn for reading, $!";
+    open( $wfh, ">>$wfn" ) or die "Couldn't open file $wfn for writing, $!";
+    my %seen;
+    while (<$rfh>)
+    {
       print $wfh $_ unless $seen{$_}++;
-   }
-   close($wfh_tmp);
-   close($wfh);
-   unlink($rfn);
-   }
+    }
+    close($wfh_tmp);
+    close($wfh);
+    unlink($rfn);
+  }
 }
