@@ -4,7 +4,7 @@
 use warnings;
 use File::Copy qw(move);
 use Algorithm::Combinatorics qw(variations);
-my $version = "v2.4.5";
+my $version = "v2.4.6";
 $semcol = 0;
 $crop = 0;
 $maxPossible = 4;
@@ -40,14 +40,18 @@ $wfh             = "NULL";
 $crop            = 0;
 $isAllCombo      = "false";
 @userName[0]     = " ";
+$nfile           = "";
 flags();
 namesPutTogether();
-if ($isAllCombo eq "true") {
+if ($isAllCombo eq "true") 
+{
   allCombos();
 }
-
-unless ($wfh eq "NULL") {
-  if ( $overwrite eq "true" ) { unlink($wfn) }
+unless ($wfh eq "NULL") 
+{
+  if ( $overwrite eq "true" ) 
+  { unlink($wfn) 
+  }
   if ( -e $wfn )
   {
     die "File $wfn already present.  Not overwriting, use --overwrite to override.\n";
@@ -115,7 +119,8 @@ if ( $numGoHigh == -1 )
     }
   }
 }
-unless ($wfh eq "NULL") {
+unless ($wfh eq "NULL") 
+{
   if ( $uniqueGuessOnly eq "true" )
   {
     writeFileUniq();
@@ -191,14 +196,17 @@ sub defaultCombos
 
 sub allCombos
 {
-  for $howManyPossible (1..$maxPossible) {
+  for $howManyPossible (1..$maxPossible) 
+  {
     @possibles = qw(FN: LN: fn: ln: Ln: Fn: Fi: fi: Li: li: FI: Mi: MI: mi: Mn: MN: mn: Un: UN: un: [rev]FN: [rev]LN: [rev]fn: [rev]ln: [rev]Ln: [rev]Fn: [rev]Fi: [rev]fi: [rev]Li: [rev]li: [rev]FI: [rev]Mi: [rev]MI: [rev]mi: [rev]Mn: [rev]MN: [rev]mn: [rev]Un: [rev]UN: [rev]un:);
     my $iter = variations(\@possibles, $howManyPossible);
-    while (my $c = $iter->next) {
+    while (my $c = $iter->next) 
+    {
       push (@blah, "@$c");
     }
   }
-  for $perm (0..$#blah) {
+  for $perm (0..$#blah) 
+  {
     $blah[$perm] =~ s/ //g;
     push (@ARGV, $blah[$perm]);
   }
@@ -256,6 +264,11 @@ sub flags
       if ( $ARGV[$optarg] eq "--passwdfile" )
       {
         $passwd      = $ARGV[ $optarg + 1 ];
+        $numOfOpArgs = $numOfOpArgs + 2;
+      }
+      if ( $ARGV[$optarg] eq "--namesfile" )
+      {
+        $nfile       = $ARGV[ $optarg + 1 ];
         $numOfOpArgs = $numOfOpArgs + 2;
       }
       if ( $ARGV[$optarg] eq "--hydra" )
@@ -360,15 +373,19 @@ sub flags
     if ( $passwd ne "" )
     {
       openPasswordFile();
-    }    
+    }
+    if ( $nfile ne "" )
+    {
+      openNamesFile();
+    }
   }
   
   sub openPasswordFile
   {
     #open passwd file
-    open( PASSWDFILE, $passwd ) || die "Couldn't open $passwd, $!";
-    my @passwdfile = <PASSWDFILE>;
-    close(PASSWDFILE);
+    open( $passwdfileh, $passwd ) || die "Couldn't open $passwd, $!";
+    my @passwdfile = <$passwdfileh>;
+    close($passwdfileh);
     if ( $singleuser ne "notsingleusermode" )
     {
       for my $passwdusers ( 0 .. $#passwdfile )
@@ -401,6 +418,21 @@ sub flags
       }
     }
   }
+  
+  sub openNamesFile
+  {
+    #open names file
+    open( $namesfileh, $nfile ) || die "Couldn't open $nfile, $!";
+    my @namesfile = <$namesfileh>;
+    close($namesfileh);
+    for my $line ( 0 .. $#namesfile )
+    {
+      chomp($namesfile[$line]);
+      push( @fullname, $namesfile[$line] );
+      push( @userName, " " );
+    }
+  }
+  
   
   sub namesPutTogether
   {
@@ -684,7 +716,8 @@ sub flags
 
 sub writeFile
 {
-  unless ($wfh eq "NULL") {
+  unless ($wfh eq "NULL") 
+  {
     open( $wfh_tmp, ">>$wfn_tmp" ) or die "Couldn't open file $wfn_tmp, $!";
     $overwrite = "true"; 
     if ( $wfh eq "WORDLIST" )
@@ -706,14 +739,16 @@ sub writeFile
     close($wfh_tmp);
     $rfn = $wfn_tmp;
   }
-  if ($wfh eq "NULL") {
+  if ($wfh eq "NULL") 
+  {
     print "$combo\n";
   }
 }
 
 sub writeFileUniq
 {
-  unless ($wfh eq "NULL") {
+  unless ($wfh eq "NULL") 
+  {
     $rfh = "DUPEREAD";
     open( $rfh, $rfn )     or die "Couldn't open file  $rfn for reading, $!";
     open( $wfh, ">>$wfn" ) or die "Couldn't open file $wfn for writing, $!";
