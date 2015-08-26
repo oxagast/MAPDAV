@@ -24,7 +24,7 @@ if ( $semcol == 0 )
 {
   defaultCombos();
 }
-$wfn_tmp         = "/tmp/wl-" . int( rand(999) );
+$wfn_tmp         = "wl_tmp-" . int( rand(999) );
 $wfh_tmp         = "NONDUPE";
 $numGoHigh       = -1;
 $overwrite       = "false";
@@ -39,8 +39,10 @@ $uniqueGuessOnly = "false";
 $wfh             = "NULL";
 $crop            = 0;
 $isAllCombo      = "false";
-@userName[0]     = " ";
+#@userName[0]     = " ";
 $nfile           = "";
+$nowrite         = "false";
+$wfn             = $wfn_tmp;
 flags();
 namesPutTogether();
 if ($isAllCombo eq "true") 
@@ -119,17 +121,19 @@ if ( $numGoHigh == -1 )
     }
   }
 }
-unless ($wfh eq "NULL") 
-{
-  if ( $uniqueGuessOnly eq "true" )
-  {
-    writeFileUniq();
-  }
-  if ( $uniqueGuessOnly eq "false" )
-  {
-    move( $wfn_tmp, $wfn );
-  }
-}
+#unless ($wfh eq "NULL") 
+#{
+#  if ( $uniqueGuessOnly eq "true" )
+#  {
+#    writeFileUniq();
+#  }
+#  if ( $uniqueGuessOnly eq "false" )
+#  {
+#    move( $wfn_tmp, $wfn );
+#  }
+
+
+
 
 sub doACropRot
 {
@@ -273,15 +277,33 @@ sub flags
       }
       if ( $ARGV[$optarg] eq "--hydra" )
       {
-        $wfh         = "HYDRA";
-        $wfn         = $ARGV[ $optarg + 1 ];
-        $numOfOpArgs = $numOfOpArgs + 2;
+        if (($ARGV[$optarg + 1] =~ m/--/) || ($ARGV[$optarg + 1] eq "FN:"))
+        {
+          $nowrite = "true";
+          $wfh = "HYDRA";
+          $numOfOpArgs++;
+        }
+        else {
+          $wfh         = "HYDRA";
+          $wfn         = $ARGV[ $optarg + 1 ];
+          $numOfOpArgs = $numOfOpArgs + 2;
+        }
       }
       if ( $ARGV[$optarg] eq "--wordlist" )
       {
+        if (($ARGV[$optarg + 1] =~ m/--/) || ($ARGV[$optarg + 1] eq "FN:"))
+        {
+          $nowrite = "true";
+          $wfh = "WORDLIST";
+          @userName[0]     = " ";
+          $numOfOpArgs++;
+        }
+        else {
         $wfh         = "WORDLIST";
         $wfn         = $ARGV[ $optarg + 1 ];
+        @userName[0]     = " ";
         $numOfOpArgs = $numOfOpArgs + 2;
+        }
       }
       if ( $ARGV[$optarg] eq "--unique" )
       {
@@ -716,49 +738,43 @@ sub flags
 
 sub writeFile
 {
-  unless ($wfh eq "NULL") 
+#  unless ($wfh eq "NULL") 
   {
     open( $wfh_tmp, ">>$wfn_tmp" ) or die "Couldn't open file $wfn_tmp, $!";
     $overwrite = "true"; 
     if ( $wfh eq "WORDLIST" )
     {
-      if ( $verbose eq "true" )
-      {
-        print "$combo\n";
-      }
       print $wfh_tmp "$combo\n";
+      close($wfh_tmp);
+      $rfn = $wfn_tmp;
+      writeFileUniq();
     }
     if ( $wfh eq "HYDRA" )
     {
-      if ( $verbose eq "true" )
-      {
-        print "$userName[$user]:$combo\n";
-      }
       print $wfh_tmp "$userName[$user]:$combo\n";
+      close($wfh_tmp);
+      $rfn = $wfn_tmp;
+      writeFileUniq();
     }
-    close($wfh_tmp);
-    $rfn = $wfn_tmp;
-  }
-  if ($wfh eq "NULL") 
-  {
-    print "$combo\n";
   }
 }
-
 sub writeFileUniq
 {
-  unless ($wfh eq "NULL") 
+  $rfh = "DUPEREAD";
+  open( $rfh, $rfn )     or die "Couldn't open file  $rfn for reading, $!";
+  open( $wfh, ">>$wfn" ) or die "Couldn't open file $wfn for writing, $!";
+ # %lines;
+  while (<$rfh>)
   {
-    $rfh = "DUPEREAD";
-    open( $rfh, $rfn )     or die "Couldn't open file  $rfn for reading, $!";
-    open( $wfh, ">>$wfn" ) or die "Couldn't open file $wfn for writing, $!";
-    my %seen;
-    while (<$rfh>)
+    if ($nowrite eq "false")
     {
-      print $wfh $_ unless $seen{$_}++;
+    print $wfh if not $lines{$_}++;
     }
-    close($wfh_tmp);
+    if ($nowrite eq "true")
+    {
+      print if not $lines{$_}++;
+    }
+  }
     close($wfh);
     unlink($rfn);
   }
-}
