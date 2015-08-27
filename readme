@@ -6,10 +6,11 @@ MAPDAV v2.3
 
  Using mapdav:
 
-MAPDAV v2.4.3
+MAPDAV v2.4.7
 Useage: ./mapdav [options] {combinations}
   OPTIONS:
    --passwdfile <file>: Password file you want to use
+   --namesfile <file>: Line by line list of names to use
    --hydra <file>: Output to THCHydra file format
    --wordlist <file>: Output to wordlist file format
    --singleuser <username>: Only process a single user
@@ -25,6 +26,8 @@ Useage: ./mapdav [options] {combinations}
    --threads x: How many processing threads to use, this applies to counts
    --username <username>: A username for singular input
    --full-name <"Their Full Name">: Their full name for singular input
+   --all-data <"225 glory joe chapfeild 555 7533 5557533">: Permutations
+   --exaust: Exhaustive list of combinations.  List will be very large
    --verbose: Make output verbose
    --version: Print the version
   COMBINATIONS:
