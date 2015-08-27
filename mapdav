@@ -228,6 +228,7 @@ sub versionStuff
   print "Useage: $0 \[options\] \{combinations\}\n";
   print "  OPTIONS:\n";
   print "   --passwdfile <file>: Password file you want to use\n";
+  print "   --namesfile <file>: Line by line list of names to use\n";
   print "   --hydra <file>: Output to THCHydra file format\n";
   print "   --wordlist <file>: Output to wordlist file format\n";
   print "   --singleuser <username>: Only process a single user\n";
@@ -242,6 +243,7 @@ sub versionStuff
   print "   --threads x: How many processing threads to use, this applies to counts\n";
   print "   --username <username>: A username for singular input\n";
   print "   --full-name <\"Their Full Name\">: Their full name for singular input\n";
+  print "   --all-data <\"225 glory joe chapfeild 555 7533 5557533\">: Permutations\n";
   print "   --exaust: Exhaustive list of combinations.  List will be very large\n";
   print "   --verbose: Make output verbose\n";
   print "   --version: Print the version\n";
