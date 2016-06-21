@@ -27,12 +27,10 @@ if ( $semcol == 0)
 $wfn_tmp         = "wl_tmp-" . int( rand(999) );
 $numGoHigh       = -1;
 $overwrite       = "false";
-$threads         = 1;
 $cropRot         = 0;
 $amid            = "";
 $apre            = "";
 $apost           = "";
-$numofopargs     = 0;
 $passwd          = "";
 $uniqueGuessOnly = "false";
 $crop            = 0;
@@ -43,150 +41,9 @@ $wfn             = $wfn_tmp;
 $alldat          = "false";
 $outtype         =  "WORDLIST";
 flags();
-if ($#fullname > 0) {
-  namesPutTogether();
-}
-if ($isAllCombo eq "true") 
-{
-  allCombos();
-}
-if ( $overwrite eq "true" ) 
-{ unlink($wfn) 
-}
-if ( -e $wfn )
-{
-  die "File $wfn already present.  Not overwriting, use --overwrite to override.\n";
-}
-@goHigh = ( -1 .. $numGoHigh );
-if ( $cropRot > 2 )
-{
-  if ( $numGoHigh > -1 )
-  {
-    if ( $threads > 1 )
-    {
-      require Parallel::ForkManager or die "You need Parallel::ForkManager to use counts and threading.";
-      Parallel::ForkManager->import;
-      doAParallelCropRotCount();
-    }
-    if ( $threads == 1 )
-    {
-      foreach $curHighNumPre (@goHigh)
-      {
-        for $curHighNumMid ( -1 .. $numGoHigh )
-        {
-          for $curHighNumPost ( -1 .. $numGoHigh )
-          {
-            doACropRot();
-          }
-        }
-      }
-    }
-  }
-}
-if ( $numGoHigh > -1 )
-{
-  if ( $threads > 1 )
-  {
-    require Parallel::ForkManager or die "You need Parallel::ForkManager to use counts and threading.";
-    Parallel::ForkManager->import;
-    doAParallelCount();
-  }
-  if ( $threads == 1 )
-  {
-    foreach $curHighNumPre (@goHigh)
-    {
-      for $curHighNumMid ( -1 .. $numGoHigh )
-      {
-        for $curHighNumPost ( -1 .. $numGoHigh )
-        {
-          if ($alldat eq "false") {
-            damnDatNameThing();
-          }
-          if ($alldat eq "true") {
-            allData();
-          }
-        }
-      }
-    }
-  }
-}
-$numGoHigh = -1;
-if ( $numGoHigh == -1 )
-{
-  if ( $cropRot > 2 )
-  {
-    doACropRot();
-  }
-  {
-    if ( $cropRot < 2 )
-    {
-      if ($alldat eq "false") {
-        damnDatNameThing();
-      }
-      if ($alldat eq "true") {
-        allData();
-      }
-    }
-  }
-}
 
-sub doACropRot
-{
-  for $cropRotTurn ( 2 .. $cropRot )
-  {
-    if ($alldat eq "false") {
-      damnDatNameThing();
-    }
-    if ($alldat eq "true") {
-      allData();
-    }
-  }
-}
 
-sub doAParallelCropRotCount
-{
-  my $cropPM = Parallel::ForkManager->new($threads);
-  
-  # Forks and returns the pid for the child:
-  {
-    foreach $curHighNumPre (@goHigh)
-    {
-      my $pid = $cropPM->start and next;
-      for $curHighNumMid ( -1 .. $numGoHigh )
-      {
-        for $curHighNumPost ( -1 .. $numGoHigh )
-        {
-          doACropRot();
-        }
-      }
-      $cropPM->finish;    # Terminates the child process
-    }
-    $cropPM->wait_all_children;
-  }
-}
 
-sub doAParallelCount
-{
-  my $normPM = Parallel::ForkManager->new($threads);
-  foreach $curHighNumPre (@goHigh)
-  {
-    my $pid = $normPM->start and next;
-    for $curHighNumMid ( -1 .. $numGoHigh )
-    {
-      for $curHighNumPost ( -1 .. $numGoHigh )
-      {
-        if ($alldat ne "false") {
-          damnDatNameThing();
-        }
-        if ($alldat eq "true") {
-          allData();
-        }
-      }
-    }
-    $normPM->finish;    # Terminates the child process
-  }
-  $normPM->wait_all_children;
-}
 
 sub defaultCombos
 {
@@ -217,6 +74,7 @@ sub allCombos
   for $perm (0..$#blah) 
   {
     $blah[$perm] =~ s/ //g;
+#    print "$blah[$perm]\n";
     push (@ARGV, $blah[$perm]);
   }
 }
@@ -263,7 +121,7 @@ sub flags
   #  grabs all our options
   if ( ( ( scalar(@ARGV) > 0 ) && ( $semcol == 1 ) ) || ( $ARGV[0] eq "--version" ) )
   {
-    my $numOfOpArgs = 0;
+    $numOfOpArgs = 0;
     $apost      = "";
     $apre       = "";
     $verbose    = "false";
@@ -271,7 +129,14 @@ sub flags
     $singleuser = "notsingleusermode";
     for my $optarg ( 0 .. $#ARGV )
     {
-      
+       if ( $ARGV[$optarg] eq "--full-name" )
+      {
+   push( @fullname, $ARGV[ $optarg + 1 ]);
+   $alldat      = "false";
+        $outtype     = "WORDLIST";
+    $user        = 0;
+        $numOfOpArgs = $numOfOpArgs + 2;
+      }     
       if ( $ARGV[$optarg] eq "--passwdfile" )
       {
         $passwd      = $ARGV[ $optarg + 1 ];
@@ -354,11 +219,6 @@ sub flags
         $numGoHigh   = $ARGV[ $optarg + 1 ];
         $numOfOpArgs = $numOfOpArgs + 2;
       }
-      if ( $ARGV[$optarg] eq "--threads" )
-      {
-        $threads     = $ARGV[ $optarg + 1 ];
-        $numOfOpArgs = $numOfOpArgs + 2;
-      }
       if ( $ARGV[$optarg] eq "--verbose" )
       {
         $verbose = "true";
@@ -382,23 +242,15 @@ sub flags
       if ( $ARGV[$optarg] eq "--username" )
       {
         @userName[0] = $ARGV[ $optarg + 1 ];
-        $user        = 0;
+       $user        = 0;
         $numOfOpArgs = $numOfOpArgs + 2;
       }
       if ( $ARGV[$optarg] eq "--all-data" )
       {
         push( @fullname, split(" ", $ARGV[ $optarg + 1 ] ));
         $user        = 0;
-        $outtype = "WORDLIST";
+#        $outtype = "WORDLIST";
         $alldat      = "true";
-        $numOfOpArgs = $numOfOpArgs + 2;
-      }
-      if ( $ARGV[$optarg] eq "--full-name" )
-      {
-        push( @fullname, split(" ", $ARGV[ $optarg + 1 ] ));
-        $alldat      = "false";
-        $outtype     = "WORDLIST";
-        $user        = 0;
         $numOfOpArgs = $numOfOpArgs + 2;
       }
     }
@@ -411,14 +263,36 @@ sub flags
     {
       print STDERR "MAPDAV $version\n";
     }
-    if ( $passwd ne "" )
+if ($isAllCombo eq "true") 
+{
+  allCombos();
+}
+
+if ( $overwrite eq "true" ) 
+{ unlink($wfn) 
+}
+if ( -e $wfn )
+{
+  die "File $wfn already present.  Not overwriting, use --overwrite to override.\n";
+}
+if ( $passwd ne "" )
     {
       openPasswordFile();
     }
-    if ( $nfile ne "" )
+if ($#fullname > -1) {
+  namesPutTogether();
+  damnDatNameThing();
+  }
+
+    elsif ( $nfile ne "" )
     {
       openNamesFile();
     }
+else { versionStuff();}
+if ($alldat eq "true") {
+  allData();
+}
+
   }
 }
 
@@ -479,9 +353,9 @@ sub openNamesFile
 
 sub allData
 {
-  if ($#fullname >= 5) 
+  if ($#fullname >= 8) 
   {
-    $howMuchDataToLoop = 5;
+    $howMuchDataToLoop = 8;
   }
   else 
   {
@@ -521,16 +395,13 @@ sub allData
 
 sub namesPutTogether
 {
-  # Make some formatting corrections
+#print "Extrapolating @fullname\n";
+# Make some formatting corrections
   for my $correct ( 0 .. $#fullname  )
   {
     $fullname[$correct] =~ s/\W/ /g;
-    #      $fullname[$correct] =~ s/\d//g;
     $fullname[$correct] =~ s/\s{2,}/ /g;
-  }
-  for $name ( 0 .. scalar(@fullname) - 2 )
-  {
-    $fullname[$name] = lc( $fullname[$name] );
+    $fullname[$correct] = lc( $fullname[$correct] );
   }
   # Get names
   for $name ( 0 .. $#fullname )
@@ -607,16 +478,17 @@ sub namesPutTogether
       push( @LASTNAMErevpad, "" );
     }
   }
-}
+  }
 
 sub damnDatNameThing
 {
-  # Put together the name combinations
-  for $args ( 0 .. $#ARGV )
+#print "name thing\n";
+# Put together the name combinations
+  for $args ( 1 .. $#ARGV )
   {
-    if ( $ARGV[ $args + $numofopargs ] =~ m/:/g )
+    if ( $ARGV[ $args ] =~ m/:/g )
     {
-      my @curarg = split( /:/, $ARGV[ $args + $numofopargs ] );
+      @curarg = split( /:/, $ARGV[ $args ] );
       $combo = "";
       for $user ( 0 .. $#fullname )
       {
@@ -633,6 +505,7 @@ sub damnDatNameThing
           if ( $curarg[$curargs] eq "FN" )
           {
             $combo = "$combo$FIRSTNAMEpad[$user]";
+
           }
           if ( $curarg[$curargs] eq "[rev]fn" )
           {
@@ -755,36 +628,11 @@ sub damnDatNameThing
           {
             chomp($combo);
           }
-          if ( $numGoHigh > 0 )
-          {
-            $combo = "$combo$curHighNumMid";
-            if ( $combo =~ m/$curHighNumMid$/ )
-            {
-              chomp($combo);
-            }
-          }
         }
         $combo = "$apre$combo$apost";
         if ( $combo =~ m/$amid$apost$/ )
         {
           $combo =~ s/$amid$apost$/$apost/g;
-        }
-        if ( $numGoHigh > 0 )
-        {
-          $combo = $curHighNumPre . $combo . $curHighNumPost;
-          if ( $combo =~ m/$curHighNumMid$curHighNumPost$/ )
-          {
-            $combo =~ s/$curHighNumMid$curHighNumPost$/$curHighNumPost/g;
-          }
-          if ( $combo =~ m/$curHighNumMid$curHighNumMid\w/ )
-          {
-            $combo =~ s/$curHighNumMid$curHighNumMid(\w)/$curHighNumMid$1/g;
-          }
-          $combo =~ s/(\-1|\-0)//g;
-        }
-        if ( $cropRot > 2 )
-        {
-          $crop = $cropRotTurn;
         }
         if ( $crop > 0 )
         {
@@ -792,7 +640,7 @@ sub damnDatNameThing
         }
         unless ( ( $combo eq "" ) || ( $userName[$user] eq "" ) )
         {
-          writeFile();
+        writeFile();
         }
         $combo = "";
       }
@@ -803,7 +651,6 @@ sub damnDatNameThing
 sub writeFile
 {
   open( WLL, ">>$wfn_tmp" ) or die "Couldn't open file $wfn_tmp, $!";
-  $overwrite = "true"; 
   if ( $outtype eq "WORDLIST")
   {
     print WLL "$combo\n";
