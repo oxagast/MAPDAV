@@ -288,11 +288,11 @@ if ($#fullname > -1) {
     {
       openNamesFile();
     }
-else { versionStuff();}
+
 if ($alldat eq "true") {
   allData();
 }
-
+else { versionStuff();}
   }
 }
 
