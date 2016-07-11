@@ -4,7 +4,7 @@
 use warnings;
 use File::Copy qw(move);
 use Algorithm::Combinatorics qw(variations);
-my $version = "v2.4.7";
+my $version = "v2.5";
 $semcol = 0;
 $crop = 0;
 $maxPossible = 4;
