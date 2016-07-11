@@ -145,6 +145,7 @@ sub flags
       if ( $ARGV[$optarg] eq "--namesfile" )
       {
         $nfile       = $ARGV[ $optarg + 1 ];
+        $user = 0;
         $numOfOpArgs = $numOfOpArgs + 2;
       }
       if ( $ARGV[$optarg] eq "--hydra" )
@@ -287,10 +288,14 @@ if ($#fullname > -1) {
     elsif ( $nfile ne "" )
     {
       openNamesFile();
+      namesPutTogether();
+      damnDatNameThing();
     }
 
-if ($alldat eq "true") {
+elsif ($alldat eq "true") {
   allData();
+  namesPutTogether();
+  damnDatNameThing();
 }
 else { versionStuff();}
   }
@@ -654,6 +659,9 @@ sub writeFile
   if ( $outtype eq "WORDLIST")
   {
     print WLL "$combo\n";
+    if ($verbose eq "true") {
+      print "$combo\n";
+    }
     close(WLL);
     $rfn = $wfn_tmp;
     writeFileUniq();
@@ -661,6 +669,9 @@ sub writeFile
   if ( $outtype eq "HYDRA" )
   {
     print WLL "$userName[$user]:$combo\n";
+    if ($verbose eq "true") {
+      print "$userName[$user]:$combo\n"
+    }
     close(WLL);
     $rfn = $wfn_tmp;
     writeFileUniq();
