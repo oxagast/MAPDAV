@@ -98,7 +98,7 @@ sub versionStuff
   print "   --count x: Count through numbers 0 through x and put in places\n                (this takes awhile, DO NOT SET THIS TOO HIGH! >9)\n";
   print "   --overwrite: MAPDAV will overwrite the destined output file\n";
   print "   --unique: Only output unique values (not implemented)\n";
-  print "   --threads x: How many processing threads to use, this applies to counts\n";
+  print "   --threads x: How many processing threads to use, this applies to counts (not implemented)\n";
   print "   --username <username>: A username for singular input\n";
   print "   --full-name <\"Their Full Name\">: Their full name for singular input\n";
   print "   --all-data <\"225 glory joe chapfeild 555 7533 5557533\">: Permutations\n";
