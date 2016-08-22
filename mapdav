@@ -643,7 +643,7 @@ sub damnDatNameThing
         {
           $combo = substr( $combo, 0, $crop );
         }
-        unless ( ( $combo eq "" ) || ( $userName[$user] eq "" ) )
+        unless ( ( $combo eq "" ) || ( $userName[$user] eq ""  ) )
         {
         writeFile();
         }
