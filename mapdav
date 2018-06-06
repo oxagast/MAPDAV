@@ -248,7 +248,7 @@ sub flags
       }
       if ( $ARGV[$optarg] eq "--all-data" )
       {
-        push( @fullname, split(" ", $ARGV[ $optarg + 1 ] ));
+        push( @bigData, split(" ", $ARGV[ $optarg + 1 ] ));
         $user        = 0;
 #        $outtype = "WORDLIST";
         $alldat      = "true";
@@ -358,22 +358,21 @@ sub openNamesFile
 
 sub allData
 {
-  if ($#fullname >= 8) 
+  if ($#bigData >= 8) 
   {
     $howMuchDataToLoop = 8;
   }
   else 
   {
-    $howMuchDataToLoop = $#fullname;
+    $howMuchDataToLoop = $#bigData;
   }
   for $howManyPossible (1..$howMuchDataToLoop) 
   {
-    my $iter = variations(\@fullname, $howManyPossible);
+    my $iter = variations(\@bigData, $howManyPossible);
     while (my $it = $iter->next) 
     {
       push (@namestuff, "@$it");
     }
-    
     for $perm (0..$#namestuff) 
     {
       $namestuff[$perm] =~ s/ //g;
@@ -639,10 +638,10 @@ sub damnDatNameThing
         {
           $combo =~ s/$amid$apost$/$apost/g;
         }
-        if ( $crop > 0 )
-        {
-          $combo = substr( $combo, 0, $crop );
-        }
+	#        if ( $crop > 0 )
+	#{
+	#  $combo = substr( $combo, 0, $crop );
+	#}
         unless ( ( $combo eq "" ) || ( $userName[$user] eq ""  ) )
         {
         writeFile();
@@ -660,7 +659,13 @@ sub writeFile
   {
     print WLL "$combo\n";
     if ($verbose eq "true") {
-      print "$combo\n";
+	unless ( $combo =~ m/^\w+/ ) {
+        if ( $crop > 0 )
+	        {
+                 $combo = substr( $combo, 0, $crop );
+                }
+	  print "$combo";
+       }
     }
     close(WLL);
     $rfn = $wfn_tmp;
@@ -677,6 +682,7 @@ sub writeFile
     writeFileUniq();
   }
 }
+
 
 sub writeFileUniq
 {
